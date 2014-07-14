@@ -16,4 +16,9 @@ class textonmsg(znc.Module):
 
     def OnPrivMsg(self, nick, message):
         if self.nv['connected'] == 'no':
-            pass
+            twilio = TwilioRestClient('AC941b51c0ef6f66eccec551177afb1a64','15abf8da2e7b716f209c9657079301fb')
+            message = twilio.messages.create(
+                                             body=message.s,
+                                             to='+14342841361',
+                                             from_='+14342605039'
+            )
