@@ -1,3 +1,5 @@
+activate_this = '../../../../Users/xander/.virtualenvs/py3irc/bin/activate_this.py'
+exec(open(activate_this).read(), dict(__file__=activate_this))
 import znc
 from twilio.rest import TwilioRestClient
 
