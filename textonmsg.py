@@ -14,8 +14,7 @@ class textonmsg(znc.Module):
     description = 'Texts you if you receive a private message while offline.'
     
     def OnLoad(self, args, message):
-        self.nv['number'] = self.format_number(args)
-        self.PutModule(args)
+        self.nv['number'] = self.number_check(args)
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
         return True
@@ -40,7 +39,32 @@ class textonmsg(znc.Module):
                                    body=message,
                                    to='+1'+number,
                                    from_='+14342605039'
-                                   )
+                                  )
+
+    def number_check_fail(self):
+        self.PutModule('Warning: not a valid number')
+        self.PutModule('Please enter a 10-digit phone number')
+        self.PutModule('Type "/msg textonmsg number <phone #>" to enter')
+
+    def number_check(self, number):
+        if number == '':
+            self.PutModule('Warning: no number was entered\n')
+            self.PutModule('The module will not work until you enter a number')
+            self.PutModule('Type "/msg textonmsg number <phone #>" to enter')
+        remove = '-_()[]'
+        for x in remove:
+            number = number.replace(x,'')
+        for x in number:
+            if not x in '1234567890':
+                self.number_check_fail()
+                number = ''
+                break
+        if len(number) != 10:
+            self.number_check_fail()
+            number = ''
+        if number != '':
+            self.PutModule('New number set: "'+number+'"')
+        return number
         
     def block(self, username):
         blocked = json.loads(self.nv['blocked'])
@@ -97,6 +121,20 @@ class textonmsg(znc.Module):
                 self.PutModule('"listblocked" does not accept arguments.')
                 return
             self.listblocked()
+        elif command[0].lower() == 'number':
+            if len(command) != 2:
+                self.PutModule('invalid number of arguments given;')
+                self.PutModule('please present command and 1 argument.')
+                return
+            self.nv['number'] = self.number_check(command[1])
+        elif command[0].lower() == 'shownum':
+            number = self.nv['number']
+            if number == '':
+                self.PutModule('Currently, no number is set')
+                self.PutModule('The module will not work until you enter a number')
+                self.PutModule('Type "/msg textonmsg number <phone #>" to enter')
+                return
+            self.PutModule('Current number: '+number)
         elif command[0].lower() == 'help':
             self.help()
         else:
