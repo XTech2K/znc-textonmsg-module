@@ -1,14 +1,21 @@
-activate_this = '../../../../Users/xander/.virtualenvs/py3irc/bin/activate_this.py'
+#!/usr/bin/env python3
+
+activate_this = '../../../..' \
+                '/Users/xander/.virtualenvs/py3irc/bin/activate_this.py'
 exec(open(activate_this).read(), dict(__file__=activate_this))
 import znc
 from twilio.rest import TwilioRestClient
 import json
 
+TWILIO_API_KEY = 'AC941b51c0ef6f66eccec551177afb1a64'
+TWILIO_SECRET = '15abf8da2e7b716f209c9657079301fb'
+
 class textonmsg(znc.Module):
-    description = 'Texts you if you recieve a private message while offline.'
+    description = 'Texts you if you receive a private message while offline.'
     
     def OnLoad(self, args, message):
-        self.nv['number'] = args.replace('-','')
+        self.nv['number'] = self.format_number(args)
+        self.PutModule(args)
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
         return True
@@ -23,11 +30,12 @@ class textonmsg(znc.Module):
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
         nick = nick.GetNick()
-        if self.nv['connected'] == 'no' and not nick in blocked:
-            twilio = TwilioRestClient('AC941b51c0ef6f66eccec551177afb1a64',
-                                      '15abf8da2e7b716f209c9657079301fb')
-            number = self.nv['number']
-            message = 'You have recieved a message from '+nick+': "'+message.s+'"'
+        number = self.nv['number']
+        if self.nv['connected'] == 'no' and \
+                not nick in blocked and number != '':
+            twilio = TwilioRestClient(TWILIO_API_KEY, TWILIO_SECRET)
+            message = 'You have received a message from '\
+                      +nick+': "'+message.s+'"'
             twilio.messages.create(
                                    body=message,
                                    to='+1'+number,
@@ -78,18 +86,19 @@ class textonmsg(znc.Module):
                 return
             self.block(command[1])
             return
-        if command[0].lower() == 'unblock':
+        elif command[0].lower() == 'unblock':
             if len(command) != 2:
                 self.PutModule('invalid number of arguments given;')
                 self.PutModule('please present command and 1 argument.')
                 return
             self.unblock(command[1])
-        if command[0].lower() == 'listblocked':
+        elif command[0].lower() == 'listblocked':
             if len(command) > 1:
                 self.PutModule('"listblocked" does not accept arguments.')
                 return
             self.listblocked()
-        if command[0].lower() == 'help':
+        elif command[0].lower() == 'help':
             self.help()
-        self.PutModule('Not a valid command')
-        self.PutModule('Type "help" to receive a list of valid commands')
+        else:
+            self.PutModule('Not a valid command')
+            self.PutModule('Type "help" to receive a list of valid commands')
