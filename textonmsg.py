@@ -56,7 +56,7 @@ class textonmsg(znc.Module):
         blocked = json.loads(self.nv['blocked'])
         nicks_list = blocked.keys()
         self.PutModule('Blocked users:')
-        self.PutModule('\n'.join(nicks_list)+'\n\n')
+        self.PutModule('\n\n'.join(nicks_list))
 
     def help(self):
         self.PutModule('Available commands are:')
