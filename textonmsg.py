@@ -8,6 +8,7 @@ class textonmsg(znc.Module):
     description = 'Texts you if you recieve a private message while offline.'
     
     def OnLoad(self, args, message):
+        self.nv['number'] = args.
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
         return True
@@ -25,10 +26,11 @@ class textonmsg(znc.Module):
         if self.nv['connected'] == 'no' and not nick in blocked:
             twilio = TwilioRestClient('AC941b51c0ef6f66eccec551177afb1a64',
                                       '15abf8da2e7b716f209c9657079301fb')
+            number = self.nv['number']
             message = 'You have recieved a message from '+nick+': "'+message.s+'"'
             twilio.messages.create(
                                    body=message,
-                                   to='+14342841361',
+                                   to='+1'+number,
                                    from_='+14342605039'
                                    )
         
@@ -56,6 +58,17 @@ class textonmsg(znc.Module):
         self.PutModule('Blocked users:')
         self.PutModule('\n'.join(nicks_list)+'\n\n')
 
+    def help(self):
+        self.PutModule('Available commands are:')
+        self.PutModule('block <username>   - '
+                       'stops getting texts when messaged by specified user')
+        self.PutModule('unblock <username> - '
+                       'removes block from specified user')
+        self.PutModule('listblocked        - '
+                       'returns a list of blocked users')
+        self.PutModule('number <phone #>   - '
+                       'sets 10-digit phone number to receive texts')
+
     def OnModCommand(self, command):
         command = command.split(' ')
         if command[0].lower() == 'block':
@@ -76,3 +89,7 @@ class textonmsg(znc.Module):
                 self.PutModule('"listblocked" does not accept arguments.')
                 return
             self.listblocked()
+        if command[0].lower() == 'help':
+            self.help()
+        self.PutModule('Not a valid command')
+        self.PutModule('Type "help" to receive a list of valid commands')
