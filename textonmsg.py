@@ -8,7 +8,7 @@ class textonmsg(znc.Module):
     description = 'Texts you if you recieve a private message while offline.'
     
     def OnLoad(self, args, message):
-        self.nv['number'] = args.
+        self.nv['number'] = args.replace('-','')
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
         return True
