@@ -14,7 +14,7 @@ class textonmsg(znc.Module):
     #CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
         """Initially sets variables on module load"""
-        self.nv['number'] = self.number_check(args)
+        self.nv['number'] = self.numberCheck(args)
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
         return True
@@ -59,11 +59,11 @@ class textonmsg(znc.Module):
             number = number.replace(x,'')
         for x in number:
             if not x in '1234567890':
-                self.number_check_fail()
+                self.numberCheckFail()
                 number = ''
                 break
         if len(number) != 10:
-            self.number_check_fail()
+            self.numberCheckFail()
             number = ''
         if number != '':
             self.PutModule('New number set: "'+number+'"')
@@ -133,7 +133,7 @@ class textonmsg(znc.Module):
                 self.PutModule('invalid number of arguments given;')
                 self.PutModule('please present command and 1 argument.')
                 return
-            self.nv['number'] = self.number_check(command[1])
+            self.nv['number'] = self.numberCheck(command[1])
         elif command[0].lower() == 'shownum':
             number = self.nv['number']
             if number == '':
