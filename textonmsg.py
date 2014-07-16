@@ -6,9 +6,7 @@ exec(open(activate_this).read(), dict(__file__=activate_this))
 import znc
 from twilio.rest import TwilioRestClient
 import json
-
-TWILIO_API_KEY = 'AC941b51c0ef6f66eccec551177afb1a64'
-TWILIO_SECRET = '15abf8da2e7b716f209c9657079301fb'
+from local import TWILIO_SID, TWILIO_TOKEN
 
 class textonmsg(znc.Module):
     description = 'Texts you if you receive a private message while offline.'
@@ -32,7 +30,7 @@ class textonmsg(znc.Module):
         number = self.nv['number']
         if self.nv['connected'] == 'no' and \
                 not nick in blocked and number != '':
-            twilio = TwilioRestClient(TWILIO_API_KEY, TWILIO_SECRET)
+            twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from '\
                       +nick+': "'+message.s+'"'
             twilio.messages.create(
