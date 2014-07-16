@@ -69,6 +69,15 @@ class textonmsg(znc.Module):
             self.PutModule('New number set: "'+number+'"')
         return number
 
+    def showNum(self):
+        number = self.nv['number']
+        if number == '':
+            self.PutModule('Currently, no number is set')
+            self.PutModule('The module will not work until you enter a number')
+            self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+            return
+        self.PutModule('Current number: '+number)
+
     def block(self, username):
         """Blocks specified username"""
         blocked = json.loads(self.nv['blocked'])
@@ -137,13 +146,10 @@ class textonmsg(znc.Module):
                 return
             self.nv['number'] = self.numberCheck(command[1])
         elif command[0].lower() == 'shownum':
-            number = self.nv['number']
-            if number == '':
-                self.PutModule('Currently, no number is set')
-                self.PutModule('The module will not work until you enter a number')
-                self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+            if len(command) > 1:
+                self.PutModule('"listblocked" does not accept arguments.')
                 return
-            self.PutModule('Current number: '+number)
+            showNum()
         elif command[0].lower() == 'help':
             self.help()
         else:
