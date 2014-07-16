@@ -17,6 +17,7 @@ class textonmsg(znc.Module):
         self.nv['number'] = self.numberCheck(args)
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
+        self.nv['received'] = '{}'
         return True
 
     def OnClientLogin(self):
@@ -24,15 +25,26 @@ class textonmsg(znc.Module):
 
     def OnClientDisconnect(self):
         self.nv['connected'] = 'no'
+        self.nv['received'] = '{}'
 
     def OnPrivMsg(self, nick, message):
         """Sends text via Twilio when client is offline and receives message"""
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
+        received_dict = json.loads(self.nv['received'])
         nick = nick.GetNick()
+        try:
+            received_num = received_dict[nick]
+            if received_num < 3:
+                received = False
+            else:
+                received = True
+        except KeyError:
+            received_dict[nick] = 0
+            received = False
         number = self.nv['number']
         if self.nv['connected'] == 'no' and \
-                not nick in blocked and number != '':
+                not nick in blocked and number != '' and not received:
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from '\
                       +nick+': "'+message.s+'"'
@@ -41,6 +53,8 @@ class textonmsg(znc.Module):
                                    to='+1'+number,
                                    from_='+14342605039'
                                   )
+            received_dict[nick] += 1
+            self.nv['received'] = json.dumps(received_dict, separators=(',',':'))
 
     #mixedCase method name means that it is a normal method
     def numberCheckFail(self):
