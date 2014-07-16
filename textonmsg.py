@@ -1,36 +1,85 @@
+#!/usr/bin/env python3
+
+activate_this = '../../../..' \
+                '/Users/xander/.virtualenvs/py3irc/bin/activate_this.py'
+exec(open(activate_this).read(), dict(__file__=activate_this))
 import znc
+from twilio.rest import TwilioRestClient
 import json
+from local import TWILIO_SID, TWILIO_TOKEN
 
 class textonmsg(znc.Module):
-    description = 'Texts you if you recieve a private message while offline.'
-    
+    description = 'Texts you if you receive a private message while offline.'
+
+    #CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
+        """Initially sets variables on module load"""
+        self.nv['number'] = self.numberCheck(args)
         self.nv['connected'] = 'yes'
-        self.nv['recieved'] = '[]'
-        self.nv['messages'] = ''
+        self.nv['blocked'] = '{}'
         return True
-    
+
     def OnClientLogin(self):
         self.nv['connected'] = 'yes'
-        self.nv['recieved'] = '[]'
-        self.PutModule('hello\n\n\n')
-        self.PutModule(self.nv['messages'])
-        self.nv['messages'] = ''
-    
+
     def OnClientDisconnect(self):
         self.nv['connected'] = 'no'
 
     def OnPrivMsg(self, nick, message):
-        recieved = json.loads(self.nv['recieved'])
+        """Sends text via Twilio when client is offline and receives message"""
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
         nick = nick.GetNick()
-        if self.nv['connected'] == 'no' and not nick in (recieved+blocked):
-            self.nv['messages'] += message.s+'\n\n'
-            recieved.append(nick)
-            self.nv['recieved'] = json.dumps(recieved, separators=(',',':'))
-        
+        number = self.nv['number']
+        if self.nv['connected'] == 'no' and \
+                not nick in blocked and number != '':
+            twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
+            message = 'You have received a message from '\
+                      +nick+': "'+message.s+'"'
+            twilio.messages.create(
+                                   body=message,
+                                   to='+1'+number,
+                                   from_='+14342605039'
+                                  )
+
+    #mixedCase method name means that it is a normal method
+    def numberCheckFail(self):
+        self.PutModule('Warning: not a valid number')
+        self.PutModule('Please enter a 10-digit phone number')
+        self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+
+    def numberCheck(self, number):
+        """Checks entered phone number to ensure that it is valid"""
+        if number == '':
+            self.PutModule('Warning: no number was entered\n')
+            self.PutModule('The module will not work until you enter a number')
+            self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+        remove = '-_()[]'
+        for x in remove:
+            number = number.replace(x,'')
+        for x in number:
+            if not x in '1234567890':
+                self.numberCheckFail()
+                number = ''
+                break
+        if len(number) != 10:
+            self.numberCheckFail()
+            number = ''
+        if number != '':
+            self.PutModule('New number set: "'+number+'"')
+        return number
+
+    def showNum(self):
+        number = self.nv['number']
+        if number == '':
+            self.PutModule('Currently, no number is set')
+            self.PutModule('The module will not work until you enter a number')
+            self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+            return
+        self.PutModule('Current number: '+number)
+
     def block(self, username):
+        """Blocks specified username"""
         blocked = json.loads(self.nv['blocked'])
         if username in blocked.keys():
             self.PutModule(username+' is already blocked')
@@ -40,6 +89,7 @@ class textonmsg(znc.Module):
         self.nv['blocked'] = json.dumps(blocked, separators=(',',':'))
 
     def unblock(self, username):
+        """Removes block from specified user"""
         blocked = json.loads(self.nv['blocked'])
         if not username in blocked.keys():
             self.PutModule(username+' was not blocked to begin with.')
@@ -48,11 +98,26 @@ class textonmsg(znc.Module):
         self.PutModule(username+' is no longer blocked')
         self.nv['blocked'] = json.dumps(blocked, separators=(',',':'))
 
-    def listblocked(self):
+    def listBlocked(self):
+        """Gives a list of users that are blocked"""
         blocked = json.loads(self.nv['blocked'])
         nicks_list = blocked.keys()
         self.PutModule('Blocked users:')
-        self.PutModule('\n'.join(nicks_list)+'\n\n')
+        self.PutModule('\n'.join(nicks_list))
+
+    def help(self):
+        """Lists all commands"""
+        self.PutModule('Available commands are:')
+        self.PutModule('block <username>   - '
+                       'stops getting texts when messaged by specified user')
+        self.PutModule('unblock <username> - '
+                       'removes block from specified user')
+        self.PutModule('listblocked        - '
+                       'returns a list of blocked users')
+        self.PutModule('number <phone #>   - '
+                       'sets 10-digit phone number to receive texts')
+        self.PutModule('shownum            - '
+                       'shows the current connected phone number')
 
     def OnModCommand(self, command):
         command = command.split(' ')
@@ -63,14 +128,31 @@ class textonmsg(znc.Module):
                 return
             self.block(command[1])
             return
-        if command[0].lower() == 'unblock':
+        elif command[0].lower() == 'unblock':
             if len(command) != 2:
                 self.PutModule('invalid number of arguments given;')
                 self.PutModule('please present command and 1 argument.')
                 return
             self.unblock(command[1])
-        if command[0].lower() == 'listblocked':
+        elif command[0].lower() == 'listblocked':
             if len(command) > 1:
                 self.PutModule('"listblocked" does not accept arguments.')
                 return
-            self.listblocked()
+            self.listBlocked()
+        elif command[0].lower() == 'number':
+            if len(command) != 2:
+                self.PutModule('invalid number of arguments given;')
+                self.PutModule('please present command and 1 argument.')
+                return
+            self.nv['number'] = self.numberCheck(command[1])
+        elif command[0].lower() == 'shownum':
+            if len(command) > 1:
+                self.PutModule('"shownum" does not accept arguments.')
+                return
+            showNum()
+        elif command[0].lower() == 'help':
+            self.help()
+        else:
+            self.PutModule('Not a valid command')
+            self.PutModule('Type "/msg *textonmsg help" to receive '
+                           'a list of valid commands')
