@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-activate_this = '../../../..' \
-                '/Users/xander/.virtualenvs/py3irc/bin/activate_this.py'
-exec(open(activate_this).read(), dict(__file__=activate_this))
 import znc
+#Make sure that you install twilio outside of any virtual environment
 from twilio.rest import TwilioRestClient
 import json
 from local import TWILIO_SID, TWILIO_TOKEN
