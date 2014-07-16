@@ -107,6 +107,8 @@ class textonmsg(znc.Module):
                        'returns a list of blocked users')
         self.PutModule('number <phone #>   - '
                        'sets 10-digit phone number to receive texts')
+        self.PutModule('shownum            - '
+                       'shows the current connected phone number')
 
     def OnModCommand(self, command):
         command = command.split(' ')
@@ -127,7 +129,7 @@ class textonmsg(znc.Module):
             if len(command) > 1:
                 self.PutModule('"listblocked" does not accept arguments.')
                 return
-            self.listblocked()
+            self.listBlocked()
         elif command[0].lower() == 'number':
             if len(command) != 2:
                 self.PutModule('invalid number of arguments given;')
@@ -146,4 +148,5 @@ class textonmsg(znc.Module):
             self.help()
         else:
             self.PutModule('Not a valid command')
-            self.PutModule('Type "help" to receive a list of valid commands')
+            self.PutModule('Type "/msg *textonmsg help" to receive '
+                           'a list of valid commands')
