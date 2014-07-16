@@ -35,7 +35,7 @@ class textonmsg(znc.Module):
         nick = nick.GetNick()
         try:
             received_num = received_dict[nick]
-            if received_num < 3:
+            if received_num < int(self.nv['msg_limit']):
                 received = False
             else:
                 received = True
@@ -119,6 +119,18 @@ class textonmsg(znc.Module):
         self.PutModule('Blocked users:')
         self.PutModule('\n'.join(nicks_list))
 
+    def setLimit(self, limit):
+        try:
+            limit = int(limit)
+        except ValueError:
+            self.PutModule('Argument was not a number')
+            self.PutModule('Please enter a number')
+            self.Putmodule('Limit was set to default value of 3')
+            return 3
+        self.PutModule('Message limit set to '+str(limit))
+        return str(limit)
+
+
     def help(self):
         """Lists all commands"""
         self.PutModule('Available commands are:')
@@ -132,6 +144,9 @@ class textonmsg(znc.Module):
                        'sets 10-digit phone number to receive texts')
         self.PutModule('shownum            - '
                        'shows the current connected phone number')
+        self.PutModule('limit              - '
+                       'sets a new max messages per user to send as texts'
+                       '(current: '+self.nv['msg_limit']+')')
 
     def OnModCommand(self, command):
         command = command.split(' ')
@@ -163,7 +178,13 @@ class textonmsg(znc.Module):
             if len(command) > 1:
                 self.PutModule('"shownum" does not accept arguments.')
                 return
-            showNum()
+            self.showNum()
+        elif command[0].lower() == 'limit':
+            if len(command) != 2:
+                self.PutModule('invalid number of arguments given;')
+                self.PutModule('please present command and 1 argument.')
+                return
+            self.nv['msg_limit'] = self.setLimit(command[1])
         elif command[0].lower() == 'help':
             self.help()
         else:
