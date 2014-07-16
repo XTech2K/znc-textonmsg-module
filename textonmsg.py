@@ -21,7 +21,7 @@ class textonmsg(znc.Module):
 
     def OnClientLogin(self):
         self.nv['connected'] = 'yes'
-    
+
     def OnClientDisconnect(self):
         self.nv['connected'] = 'no'
 
@@ -147,7 +147,7 @@ class textonmsg(znc.Module):
             self.nv['number'] = self.numberCheck(command[1])
         elif command[0].lower() == 'shownum':
             if len(command) > 1:
-                self.PutModule('"listblocked" does not accept arguments.')
+                self.PutModule('"shownum" does not accept arguments.')
                 return
             showNum()
         elif command[0].lower() == 'help':
