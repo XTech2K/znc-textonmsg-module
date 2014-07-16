@@ -1,0 +1,8 @@
+#This file should be filled out, renamed to "local.py" and
+#moved to the modpython folder before the module us used
+
+#SID from Twilio account
+TWILIO_SID = ''
+
+#Token from Twilio account
+TWILIO_TOKEN = ''
