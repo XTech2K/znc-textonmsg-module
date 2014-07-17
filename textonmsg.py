@@ -43,7 +43,7 @@ class textonmsg(znc.Module):
 
     def setIdle(self):
         textonmsg.timer.Stop()
-        textonmsg.connected = False
+        textonmsg.idle = True
         self.PutStatus('you are now away and will receive texts when you are PM\'ed')
 
     # CamelCase method name means that it is a built-in ZNC event handler
@@ -67,6 +67,11 @@ class textonmsg(znc.Module):
         textonmsg.connected = False
         textonmsg.received = {}
 
+    def isOnline(self):
+        if textonmsg.connected and not textonmsg.away and not textonmsg.idle:
+            return True
+        return False
+
     def OnPrivMsg(self, nick, message):
         """Sends text via Twilio when client is offline and receives message"""
         blocked = json.loads(self.nv['blocked']).keys()
@@ -75,15 +80,14 @@ class textonmsg(znc.Module):
         try:
             received_num = textonmsg.received[nick]
             if received_num < int(self.nv['msg_limit']):
-                received = False
+                limit = False
             else:
-                received = True
+                limit = True
         except KeyError:
             textonmsg.received[nick] = 0
-            received = False
+            limit = False
         number = self.nv['number']
-        if not textonmsg.connected and \
-                not nick in blocked and number != '' and not received:
+        if not (self.isOnline() or nick in blocked or number == '' or limit):
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from ' \
                       + nick + ': "' + message.s + '"'
@@ -226,6 +230,12 @@ class textonmsg(znc.Module):
                 self.PutModule('please present command and 1 argument.')
                 return
             self.nv['msg_limit'] = self.setLimit(command[1])
+        elif command[0].lower() == 'away':
+            if len(command) > 1:
+                self.PutModule('"away" does not accept arguments.')
+                return
+            textonmsg.away = True
+            self.PutModule('You are now away, and will receive texts when PM\'ed')
         elif command[0].lower() == 'help':
             self.help()
         else:
