@@ -1,21 +1,59 @@
 #!/usr/bin/env python3
 
 import znc
-#Make sure that you install twilio outside of any virtual environment
+# Make sure that you install twilio outside of any virtual environment
 from twilio.rest import TwilioRestClient
 import json
+from time import time
 from local import TWILIO_SID, TWILIO_TOKEN
+
+
+class IdleTimer(znc.Timer):
+    def RunJob(self):
+        if 0 < self.idle_time < time()-self.last_activity:
+            self.GetModule().setAway()
+
 
 class textonmsg(znc.Module):
     description = 'Texts you if you receive a private message while offline.'
 
-    #CamelCase method name means that it is a built-in ZNC event handler
+    timer = None
+    away = None
+    idle_time = None
+
+    def setTimer(self):
+        textonmsg.timer = self.CreateTimer(IdleTimer,
+                                           interval=2,
+                                           cycles=0,
+                                           description='checks for idle client'
+                                           )
+        textonmsg.timer.idle_time = textonmsg.idle_time
+        textonmsg.timer.last_activity = time()
+
+    def ping(self):
+        if textonmsg.away:
+            textonmsg.away = False
+            self.nv['connected'] = 'yes'
+            self.setTimer()
+        else:
+            textonmsg.timer.last_activity = time()
+
+    def setAway(self):
+        textonmsg.timer.Stop()
+        self.nv['connected'] = 'no'
+        self.PutStatus('you are now away and will receive texts when you are PM\'ed')
+
+    # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
         """Initially sets variables on module load"""
         self.nv['number'] = self.numberCheck(args)
         self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
         self.nv['received'] = '{}'
+        textonmsg.away = False
+        if textonmsg.idle_time == None:
+            textonmsg.idle_time = 10
+        self.setTimer()
         return True
 
     def OnClientLogin(self):
@@ -44,17 +82,20 @@ class textonmsg(znc.Module):
         if self.nv['connected'] == 'no' and \
                 not nick in blocked and number != '' and not received:
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
-            message = 'You have received a message from '\
-                      +nick+': "'+message.s+'"'
+            message = 'You have received a message from ' \
+                      + nick + ': "' + message.s + '"'
             twilio.messages.create(
-                                   body=message,
-                                   to='+1'+number,
-                                   from_='+14342605039'
-                                  )
+                body=message,
+                to='+1' + number,
+                from_='+14342605039'
+            )
             received_dict[nick] += 1
-            self.nv['received'] = json.dumps(received_dict, separators=(',',':'))
+            self.nv['received'] = json.dumps(received_dict, separators=(',', ':'))
 
-    #mixedCase method name means that it is a normal method
+    def OnUserMsg(self, target, message):
+        self.ping()
+
+    # mixedCase method name means that it is a normal method
     def numberCheckFail(self):
         self.PutModule('Warning: not a valid number')
         self.PutModule('Please enter a 10-digit phone number')
@@ -68,7 +109,7 @@ class textonmsg(znc.Module):
             self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
         remove = '-_()[]'
         for x in remove:
-            number = number.replace(x,'')
+            number = number.replace(x, '')
         for x in number:
             if not x in '1234567890':
                 self.numberCheckFail()
@@ -78,7 +119,7 @@ class textonmsg(znc.Module):
             self.numberCheckFail()
             number = ''
         if number != '':
-            self.PutModule('New number set: "'+number+'"')
+            self.PutModule('New number set: "' + number + '"')
         return number
 
     def showNum(self):
@@ -88,27 +129,27 @@ class textonmsg(znc.Module):
             self.PutModule('The module will not work until you enter a number')
             self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
             return
-        self.PutModule('Current number: '+number)
+        self.PutModule('Current number: ' + number)
 
     def block(self, username):
         """Blocks specified username"""
         blocked = json.loads(self.nv['blocked'])
         if username in blocked.keys():
-            self.PutModule(username+' is already blocked')
+            self.PutModule(username + ' is already blocked')
             return
         blocked[username] = ''
-        self.PutModule(username+' is now blocked.')
-        self.nv['blocked'] = json.dumps(blocked, separators=(',',':'))
+        self.PutModule(username + ' is now blocked.')
+        self.nv['blocked'] = json.dumps(blocked, separators=(',', ':'))
 
     def unblock(self, username):
         """Removes block from specified user"""
         blocked = json.loads(self.nv['blocked'])
         if not username in blocked.keys():
-            self.PutModule(username+' was not blocked to begin with.')
+            self.PutModule(username + ' was not blocked to begin with.')
             return
-        del(blocked[username])
-        self.PutModule(username+' is no longer blocked')
-        self.nv['blocked'] = json.dumps(blocked, separators=(',',':'))
+        del (blocked[username])
+        self.PutModule(username + ' is no longer blocked')
+        self.nv['blocked'] = json.dumps(blocked, separators=(',', ':'))
 
     def listBlocked(self):
         """Gives a list of users that are blocked"""
@@ -125,7 +166,7 @@ class textonmsg(znc.Module):
             self.PutModule('Please enter a number')
             self.Putmodule('Limit was set to default value of 3')
             return 3
-        self.PutModule('Message limit set to '+str(limit))
+        self.PutModule('Message limit set to ' + str(limit))
         return str(limit)
 
 
@@ -144,7 +185,7 @@ class textonmsg(znc.Module):
                        'shows the current connected phone number')
         self.PutModule('limit <new limit>  - '
                        'sets a new max messages per user to send as texts'
-                       '(current: '+self.nv['msg_limit']+')')
+                       '(current: ' + self.nv['msg_limit'] + ')')
 
     def OnModCommand(self, command):
         command = command.split(' ')
