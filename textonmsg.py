@@ -11,7 +11,7 @@ from local import TWILIO_SID, TWILIO_TOKEN
 class IdleTimer(znc.Timer):
     def RunJob(self):
         if 0 < self.idle_time < time()-self.last_activity:
-            self.GetModule().setAway()
+            self.GetModule().setIdle()
 
 
 class textonmsg(znc.Module):
@@ -38,7 +38,7 @@ class textonmsg(znc.Module):
         else:
             textonmsg.timer.last_activity = time()
 
-    def setAway(self):
+    def setIdle(self):
         textonmsg.timer.Stop()
         self.nv['connected'] = 'no'
         self.PutStatus('you are now away and will receive texts when you are PM\'ed')
