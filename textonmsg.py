@@ -34,8 +34,8 @@ class textonmsg(znc.Module):
         textonmsg.timer.last_activity = time()
 
     def ping(self):
-        if textonmsg.away:
-            textonmsg.away = False
+        if textonmsg.idle:
+            textonmsg.idle = False
             textonmsg.connected = True
             self.setTimer()
         else:
@@ -62,6 +62,7 @@ class textonmsg(znc.Module):
 
     def OnClientLogin(self):
         textonmsg.connected = True
+        self.ping()
 
     def OnClientDisconnect(self):
         textonmsg.connected = False
