@@ -142,7 +142,7 @@ class textonmsg(znc.Module):
                        'sets 10-digit phone number to receive texts')
         self.PutModule('shownum            - '
                        'shows the current connected phone number')
-        self.PutModule('limit              - '
+        self.PutModule('limit <new limit>  - '
                        'sets a new max messages per user to send as texts'
                        '(current: '+self.nv['msg_limit']+')')
 
