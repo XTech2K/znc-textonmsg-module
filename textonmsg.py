@@ -18,8 +18,11 @@ class textonmsg(znc.Module):
     description = 'Texts you if you receive a private message while offline.'
 
     timer = None
+    connected = None
+    idle = None
     away = None
     idle_time = None
+    received = None
 
     def setTimer(self):
         textonmsg.timer = self.CreateTimer(IdleTimer,
@@ -33,23 +36,24 @@ class textonmsg(znc.Module):
     def ping(self):
         if textonmsg.away:
             textonmsg.away = False
-            self.nv['connected'] = 'yes'
+            textonmsg.connected = True
             self.setTimer()
         else:
             textonmsg.timer.last_activity = time()
 
     def setIdle(self):
         textonmsg.timer.Stop()
-        self.nv['connected'] = 'no'
+        textonmsg.connected = False
         self.PutStatus('you are now away and will receive texts when you are PM\'ed')
 
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
         """Initially sets variables on module load"""
         self.nv['number'] = self.numberCheck(args)
-        self.nv['connected'] = 'yes'
         self.nv['blocked'] = '{}'
-        self.nv['received'] = '{}'
+        textonmsg.received = {}
+        textonmsg.connected = True
+        textonmsg.idle = False
         textonmsg.away = False
         if textonmsg.idle_time == None:
             textonmsg.idle_time = 10
@@ -57,29 +61,28 @@ class textonmsg(znc.Module):
         return True
 
     def OnClientLogin(self):
-        self.nv['connected'] = 'yes'
+        textonmsg.connected = True
 
     def OnClientDisconnect(self):
-        self.nv['connected'] = 'no'
-        self.nv['received'] = '{}'
+        textonmsg.connected = False
+        textonmsg.received = {}
 
     def OnPrivMsg(self, nick, message):
         """Sends text via Twilio when client is offline and receives message"""
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
-        received_dict = json.loads(self.nv['received'])
         nick = nick.GetNick()
         try:
-            received_num = received_dict[nick]
+            received_num = textonmsg.received[nick]
             if received_num < int(self.nv['msg_limit']):
                 received = False
             else:
                 received = True
         except KeyError:
-            received_dict[nick] = 0
+            textonmsg.received[nick] = 0
             received = False
         number = self.nv['number']
-        if self.nv['connected'] == 'no' and \
+        if not textonmsg.connected and \
                 not nick in blocked and number != '' and not received:
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from ' \
@@ -89,8 +92,7 @@ class textonmsg(znc.Module):
                 to='+1' + number,
                 from_='+14342605039'
             )
-            received_dict[nick] += 1
-            self.nv['received'] = json.dumps(received_dict, separators=(',', ':'))
+            textonmsg.received[nick] += 1
 
     def OnUserMsg(self, target, message):
         self.ping()
