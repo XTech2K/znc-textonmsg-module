@@ -44,7 +44,7 @@ class textonmsg(znc.Module):
     def setIdle(self):
         textonmsg.timer.Stop()
         textonmsg.idle = True
-        self.PutStatus('you are now away and will receive texts when you are PM\'ed')
+        self.PutStatus('you are now idle and will receive texts when you are PM\'ed')
 
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
@@ -194,49 +194,43 @@ class textonmsg(znc.Module):
                        'sets a new max messages per user to send as texts'
                        '(current: ' + self.nv['msg_limit'] + ')')
 
+    def checkArg(self, command):
+        if len(command) != 2:
+            self.PutModule('invalid number of arguments given;')
+            self.PutModule('please present command and 1 argument.')
+            return False
+        return True
+
+    def checkNoArg(self, command):
+        if len(command) > 1:
+            self.PutModule('"away" does not accept arguments.')
+            return False
+        return True
+
     def OnModCommand(self, command):
         command = command.split(' ')
         if command[0].lower() == 'block':
-            if len(command) != 2:
-                self.PutModule('invalid number of arguments given;')
-                self.PutModule('please present command and 1 argument.')
-                return
-            self.block(command[1])
-            return
+            if self.checkArg(command):
+                self.block(command[1])
         elif command[0].lower() == 'unblock':
-            if len(command) != 2:
-                self.PutModule('invalid number of arguments given;')
-                self.PutModule('please present command and 1 argument.')
-                return
-            self.unblock(command[1])
+            if self.checkArg(command):
+                self.unblock(command[1])
         elif command[0].lower() == 'listblocked':
-            if len(command) > 1:
-                self.PutModule('"listblocked" does not accept arguments.')
-                return
-            self.listBlocked()
+            if self.checkNoArg(command):
+                self.listBlocked()
         elif command[0].lower() == 'number':
-            if len(command) != 2:
-                self.PutModule('invalid number of arguments given;')
-                self.PutModule('please present command and 1 argument.')
-                return
-            self.nv['number'] = self.numberCheck(command[1])
+            if self.checkArg(command):
+                self.nv['number'] = self.numberCheck(command[1])
         elif command[0].lower() == 'shownum':
-            if len(command) > 1:
-                self.PutModule('"shownum" does not accept arguments.')
-                return
-            self.showNum()
+            if self.checkNoArg(command):
+                self.showNum()
         elif command[0].lower() == 'limit':
-            if len(command) != 2:
-                self.PutModule('invalid number of arguments given;')
-                self.PutModule('please present command and 1 argument.')
-                return
-            self.nv['msg_limit'] = self.setLimit(command[1])
+            if self.checkArg(command):
+                self.nv['msg_limit'] = self.setLimit(command[1])
         elif command[0].lower() == 'away':
-            if len(command) > 1:
-                self.PutModule('"away" does not accept arguments.')
-                return
-            textonmsg.away = True
-            self.PutModule('You are now away, and will receive texts when PM\'ed')
+            if self.checkNoArg(command):
+                textonmsg.away = True
+                self.PutModule('You are now away, and will receive texts when PM\'ed')
         elif command[0].lower() == 'help':
             self.help()
         else:
