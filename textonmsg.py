@@ -44,18 +44,28 @@ class textonmsg(znc.Module):
         textonmsg.idle = True
         self.PutStatus('you are now idle and will receive texts when you are PM\'ed')
 
+    def setNV(self, var, default):
+        try:
+            self.nv[var]
+        except:
+            self.nv[var] = default
+
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
         """Initially sets variables on module load"""
         # TODO add introduction statements
-        self.nv['number'] = self.numberCheck(args)
-        self.nv['blocked'] = '{}'
+        if args != '':
+            self.nv['number'] = self.numberCheck(args)
+        else:
+            self.setNV('number', '')
+            self.showNum()
+        self.setNV('blocked', '{}')
+        self.setNV('idle_time', '0')
+        self.setTimer()
         textonmsg.received = {}
         textonmsg.connected = True
         textonmsg.idle = False
         textonmsg.away = False
-        self.nv['idle_time'] = '0'
-        self.setTimer()
         return True
 
     def OnClientLogin(self):
@@ -103,29 +113,23 @@ class textonmsg(znc.Module):
 
     # mixedCase method name means that it is a normal method
     def numberCheckFail(self):
+        # TODO make message more clear
         self.PutModule('Warning: not a valid number')
         self.PutModule('Please enter a 10-digit phone number')
         self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+        return ''
 
     def numberCheck(self, number):
         """Checks entered phone number to ensure that it is valid"""
-        if number == '':
-            self.PutModule('Warning: no number was entered\n')
-            self.PutModule('The module will not work until you enter a number')
-            self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
         remove = '-_()[]'
         for x in remove:
             number = number.replace(x, '')
         for x in number:
             if not x in '1234567890':
-                self.numberCheckFail()
-                number = ''
-                break
+                return self.numberCheckFail()
         if len(number) != 10:
-            self.numberCheckFail()
-            number = ''
-        if number != '':
-            self.PutModule('New number set: "' + number + '"')
+            return self.numberCheckFail()
+        self.PutModule('New number set: "' + number + '"')
         return number
 
     def showNum(self):
