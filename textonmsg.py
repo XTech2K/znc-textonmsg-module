@@ -10,7 +10,7 @@ from local import TWILIO_SID, TWILIO_TOKEN
 
 class IdleTimer(znc.Timer):
     def RunJob(self):
-        if 0 < self.idle_time < time()-self.last_activity:
+        if 0 < self.idle_time < time() - self.last_activity:
             self.GetModule().setIdle()
 
 
@@ -21,22 +21,20 @@ class textonmsg(znc.Module):
     connected = None
     idle = None
     away = None
-    idle_time = None
     received = None
 
     def setTimer(self):
         textonmsg.timer = self.CreateTimer(IdleTimer,
-                                           interval=2,
+                                           interval=5,
                                            cycles=0,
                                            description='checks for idle client'
-                                           )
-        textonmsg.timer.idle_time = textonmsg.idle_time
+        )
+        textonmsg.timer.idle_time = float(self.nv['idle_time']) * 60
         textonmsg.timer.last_activity = time()
 
     def ping(self):
         if textonmsg.idle:
             textonmsg.idle = False
-            textonmsg.connected = True
             self.setTimer()
         else:
             textonmsg.timer.last_activity = time()
@@ -49,14 +47,14 @@ class textonmsg(znc.Module):
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
         """Initially sets variables on module load"""
+        # TODO add introduction statements
         self.nv['number'] = self.numberCheck(args)
         self.nv['blocked'] = '{}'
         textonmsg.received = {}
         textonmsg.connected = True
         textonmsg.idle = False
         textonmsg.away = False
-        if textonmsg.idle_time == None:
-            textonmsg.idle_time = 10
+        self.nv['idle_time'] = '0'
         self.setTimer()
         return True
 
@@ -80,6 +78,7 @@ class textonmsg(znc.Module):
         nick = nick.GetNick()
         try:
             received_num = textonmsg.received[nick]
+            # TODO fix potential int error
             if received_num < int(self.nv['msg_limit']):
                 limit = False
             else:
@@ -176,7 +175,6 @@ class textonmsg(znc.Module):
         self.PutModule('Message limit set to ' + str(limit))
         return str(limit)
 
-
     def help(self):
         """Lists all commands"""
         self.PutModule('Available commands are:')
@@ -193,6 +191,11 @@ class textonmsg(znc.Module):
         self.PutModule('limit <new limit>  - '
                        'sets a new max messages per user to send as texts'
                        '(current: ' + self.nv['msg_limit'] + ')')
+        self.PutModule('away               - sets you to away')
+        self.PutModule('idle <idle time>   - '
+                       'sets the number of minutes before you are set to idle '
+                       '(set to 0 to turn off this functionality)')
+        self.PutModule('ping               - resets idle timer')
 
     def checkArg(self, command):
         if len(command) != 2:
@@ -206,6 +209,17 @@ class textonmsg(znc.Module):
             self.PutModule('"away" does not accept arguments.')
             return False
         return True
+
+    def setIdleTime(self, idle_time):
+        try:
+            float(idle_time)
+            self.nv['idle_time'] = idle_time
+            self.ping()
+            textonmsg.timer.Stop()
+            self.setTimer()
+        except ValueError:
+            self.PutModule('Not a valid number')
+            self.PutModule('Please try again')
 
     def OnModCommand(self, command):
         command = command.split(' ')
@@ -231,6 +245,12 @@ class textonmsg(znc.Module):
             if self.checkNoArg(command):
                 textonmsg.away = True
                 self.PutModule('You are now away, and will receive texts when PM\'ed')
+        elif command[0].lower() == 'idle':
+            if self.checkArg(command):
+                self.setIdleTime(command[1])
+        elif command[0].lower() == 'ping':
+            if self.checkNoArg(command):
+                self.ping()
         elif command[0].lower() == 'help':
             self.help()
         else:
