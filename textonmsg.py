@@ -33,6 +33,9 @@ class textonmsg(znc.Module):
         textonmsg.timer.last_activity = time()
 
     def ping(self):
+        self.PutStatus('ping')
+        textonmsg.received = {}
+        textonmsg.away = False
         if textonmsg.idle:
             textonmsg.idle = False
             self.setTimer()
@@ -74,7 +77,6 @@ class textonmsg(znc.Module):
 
     def OnClientDisconnect(self):
         textonmsg.connected = False
-        textonmsg.received = {}
 
     def isOnline(self):
         if textonmsg.connected and not textonmsg.away and not textonmsg.idle:
@@ -199,7 +201,8 @@ class textonmsg(znc.Module):
         self.PutModule('idle <idle time>   - '
                        'sets the number of minutes before you are set to idle '
                        '(set to 0 to turn off this functionality)')
-        self.PutModule('ping               - resets idle timer')
+        self.PutModule('ping               - '
+                       'resets idle timer and ends away status')
 
     def checkArg(self, command):
         if len(command) != 2:
