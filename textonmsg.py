@@ -4,6 +4,7 @@ import znc
 # Make sure that you install twilio outside of any virtual environment
 from twilio.rest import TwilioRestClient
 import json
+import re
 from time import time
 from local import TWILIO_SID, TWILIO_TOKEN
 
@@ -181,6 +182,17 @@ class textonmsg(znc.Module):
         self.PutModule('Message limit set to ' + str(limit))
         return str(limit)
 
+    def setAway(self):
+        textonmsg.away = True
+        self.PutModule('You are now away, and will receive texts when PM\'ed')
+
+    def OnNick(self, old_nick, new_nick, chans):
+        self.ping()
+        old_nick = old_nick.GetNick()
+        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
+        if regex.match(nick_change):
+            self.setAway()
+
     def help(self):
         """Lists all commands"""
         self.PutModule('Available commands are:')
@@ -250,8 +262,7 @@ class textonmsg(znc.Module):
                 self.nv['msg_limit'] = self.setLimit(command[1])
         elif command[0].lower() == 'away':
             if self.checkNoArg(command):
-                textonmsg.away = True
-                self.PutModule('You are now away, and will receive texts when PM\'ed')
+                self.setAway()
         elif command[0].lower() == 'idle':
             if self.checkArg(command):
                 self.setIdleTime(command[1])
