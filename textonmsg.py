@@ -34,6 +34,7 @@ class textonmsg(znc.Module):
         textonmsg.timer.last_activity = time()
 
     def ping(self):
+        # TODO remember to remove this message
         self.PutStatus('ping')
         textonmsg.received = {}
         textonmsg.away = False
@@ -46,7 +47,7 @@ class textonmsg(znc.Module):
     def setIdle(self):
         textonmsg.timer.Stop()
         textonmsg.idle = True
-        self.PutStatus('you are now idle and will receive texts when you are PM\'ed')
+        self.PutStatus('you are now idle, and will receive texts when PM\'ed')
 
     def setNV(self, var, default):
         try:
@@ -54,67 +55,20 @@ class textonmsg(znc.Module):
         except:
             self.nv[var] = default
 
-    # CamelCase method name means that it is a built-in ZNC event handler
-    def OnLoad(self, args, message):
-        """Initially sets variables on module load"""
-        # TODO add introduction statements
-        if args != '':
-            self.nv['number'] = self.numberCheck(args)
-        else:
-            self.setNV('number', '')
-            self.showNum()
-        self.setNV('blocked', '{}')
-        self.setNV('idle_time', '0')
-        self.setTimer()
-        textonmsg.received = {}
-        textonmsg.connected = True
-        textonmsg.idle = False
-        textonmsg.away = False
+    # mixedCase method name means that it is a normal method
+    def checkArg(self, command):
+        if len(command) != 2:
+            self.PutModule('invalid number of arguments given;')
+            self.PutModule('please present command and 1 argument.')
+            return False
         return True
 
-    def OnClientLogin(self):
-        textonmsg.connected = True
-        self.ping()
+    def checkNoArg(self, command):
+        if len(command) > 1:
+            self.PutModule('"away" does not accept arguments.')
+            return False
+        return True
 
-    def OnClientDisconnect(self):
-        textonmsg.connected = False
-
-    def isOnline(self):
-        if textonmsg.connected and not textonmsg.away and not textonmsg.idle:
-            return True
-        return False
-
-    def OnPrivMsg(self, nick, message):
-        """Sends text via Twilio when client is offline and receives message"""
-        blocked = json.loads(self.nv['blocked']).keys()
-        blocked = list(blocked)
-        nick = nick.GetNick()
-        try:
-            received_num = textonmsg.received[nick]
-            # TODO fix potential int error
-            if received_num < int(self.nv['msg_limit']):
-                limit = False
-            else:
-                limit = True
-        except KeyError:
-            textonmsg.received[nick] = 0
-            limit = False
-        number = self.nv['number']
-        if not (self.isOnline() or nick in blocked or number == '' or limit):
-            twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
-            message = 'You have received a message from ' \
-                      + nick + ': "' + message.s + '"'
-            twilio.messages.create(
-                body=message,
-                to='+1' + number,
-                from_='+14342605039'
-            )
-            textonmsg.received[nick] += 1
-
-    def OnUserMsg(self, target, message):
-        self.ping()
-
-    # mixedCase method name means that it is a normal method
     def numberCheckFail(self):
         # TODO make message more clear
         self.PutModule('Warning: not a valid number')
@@ -186,12 +140,21 @@ class textonmsg(znc.Module):
         textonmsg.away = True
         self.PutModule('You are now away, and will receive texts when PM\'ed')
 
-    def OnNick(self, old_nick, new_nick, chans):
-        self.ping()
-        old_nick = old_nick.GetNick()
-        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
-        if regex.match(nick_change):
-            self.setAway()
+    def setIdleTime(self, idle_time):
+        try:
+            float(idle_time)
+            self.nv['idle_time'] = idle_time
+            self.ping()
+            textonmsg.timer.Stop()
+            self.setTimer()
+        except ValueError:
+            self.PutModule('Not a valid number')
+            self.PutModule('Please try again')
+
+    def isOnline(self):
+        if textonmsg.connected and not textonmsg.away and not textonmsg.idle:
+            return True
+        return False
 
     def help(self):
         """Lists all commands"""
@@ -216,29 +179,68 @@ class textonmsg(znc.Module):
         self.PutModule('ping               - '
                        'resets idle timer and ends away status')
 
-    def checkArg(self, command):
-        if len(command) != 2:
-            self.PutModule('invalid number of arguments given;')
-            self.PutModule('please present command and 1 argument.')
-            return False
+    # CamelCase method name means that it is a built-in ZNC event handler
+    def OnLoad(self, args, message):
+        """Initially sets variables on module load"""
+        # TODO add introduction statements
+        if args != '':
+            self.nv['number'] = self.numberCheck(args)
+        else:
+            self.setNV('number', '')
+            self.showNum()
+        self.setNV('blocked', '{}')
+        self.setNV('idle_time', '0')
+        self.setNV('msg_limit', '3')
+        self.setTimer()
+        textonmsg.received = {}
+        textonmsg.connected = True
+        textonmsg.idle = False
+        textonmsg.away = False
         return True
 
-    def checkNoArg(self, command):
-        if len(command) > 1:
-            self.PutModule('"away" does not accept arguments.')
-            return False
-        return True
+    def OnClientLogin(self):
+        textonmsg.connected = True
+        self.ping()
 
-    def setIdleTime(self, idle_time):
+    def OnClientDisconnect(self):
+        textonmsg.connected = False
+
+    def OnPrivMsg(self, nick, message):
+        """Sends text via Twilio when client is offline and receives message"""
+        blocked = json.loads(self.nv['blocked']).keys()
+        blocked = list(blocked)
+        nick = nick.GetNick()
         try:
-            float(idle_time)
-            self.nv['idle_time'] = idle_time
-            self.ping()
-            textonmsg.timer.Stop()
-            self.setTimer()
-        except ValueError:
-            self.PutModule('Not a valid number')
-            self.PutModule('Please try again')
+            received_num = textonmsg.received[nick]
+            # TODO fix potential int error
+            if received_num < int(self.nv['msg_limit']):
+                limit = False
+            else:
+                limit = True
+        except KeyError:
+            textonmsg.received[nick] = 0
+            limit = False
+        number = self.nv['number']
+        if not (self.isOnline() or nick in blocked or number == '' or limit):
+            twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
+            message = 'You have received a message from ' \
+                      + nick + ': "' + message.s + '"'
+            twilio.messages.create(
+                body=message,
+                to='+1' + number,
+                from_='+14342605039'
+            )
+            textonmsg.received[nick] += 1
+
+    def OnUserMsg(self, target, message):
+        self.ping()
+
+    def OnNick(self, old_nick, new_nick, chans):
+        self.ping()
+        old_nick = old_nick.GetNick()
+        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
+        if regex.match(new_nick):
+            self.setAway()
 
     def OnModCommand(self, command):
         command = command.split(' ')
@@ -259,6 +261,7 @@ class textonmsg(znc.Module):
                 self.showNum()
         elif command[0].lower() == 'limit':
             if self.checkArg(command):
+                # TODO put this in a function
                 self.nv['msg_limit'] = self.setLimit(command[1])
         elif command[0].lower() == 'away':
             if self.checkNoArg(command):
