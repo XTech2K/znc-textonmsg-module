@@ -11,6 +11,7 @@ from local import TWILIO_SID, TWILIO_TOKEN
 
 class IdleTimer(znc.Timer):
     def RunJob(self):
+        """Checks to see if enough time has passed to set idle status"""
         if 0 < self.idle_time < time() - self.last_activity:
             self.GetModule().setIdle()
 
@@ -34,8 +35,6 @@ class textonmsg(znc.Module):
         textonmsg.timer.last_activity = time()
 
     def ping(self):
-        # TODO remember to remove this message
-        self.PutStatus('ping')
         textonmsg.received = {}
         textonmsg.away = False
         if textonmsg.idle:
@@ -50,6 +49,7 @@ class textonmsg(znc.Module):
         self.PutStatus('you are now idle, and will receive texts when PM\'ed')
 
     def setNV(self, var, default):
+        """Initializes NV variables if they do not already exist"""
         try:
             self.nv[var]
         except:
@@ -57,6 +57,7 @@ class textonmsg(znc.Module):
 
     # mixedCase method name means that it is a normal method
     def checkArg(self, command):
+        """Ensures that command has exatly 1 argument"""
         if len(command) != 2:
             self.PutModule('Invalid number of arguments given')
             self.PutModule('Please present command and 1 argument')
@@ -64,6 +65,7 @@ class textonmsg(znc.Module):
         return True
 
     def checkNoArg(self, command):
+        """Ensures that command has no arguments"""
         if len(command) > 1:
             self.PutModule('This command does not accept arguments')
             self.PutModule('Please present command alone')
@@ -75,20 +77,22 @@ class textonmsg(znc.Module):
         self.PutModule('Warning: not a valid number')
         self.PutModule('Please enter a 10-digit phone number')
         self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
-        return ''
+        self.nv['number'] = ''
 
-    def numberCheck(self, number):
+    def setNumber(self, number):
         """Checks entered phone number to ensure that it is valid"""
         remove = '-_()[]'
         for x in remove:
             number = number.replace(x, '')
         for x in number:
             if not x in '1234567890':
-                return self.numberCheckFail()
+                self.numberCheckFail()
+                return
         if len(number) != 10:
-            return self.numberCheckFail()
-        self.PutModule('New number set: "' + number + '"')
-        return number
+            self.numberCheckFail()
+            return
+        self.PutModule('New number set: ' + number)
+        self.nv['number'] = number
 
     def showNum(self):
         number = self.nv['number']
@@ -133,9 +137,9 @@ class textonmsg(znc.Module):
             self.PutModule('Argument was not a number')
             self.PutModule('Please enter a number')
             self.Putmodule('Limit was set to default value of 3')
-            return 3
+            return '3'
         self.PutModule('Message limit set to ' + str(limit))
-        return str(limit)
+        self.nv['msg_limit'] = str(limit)
 
     def setAway(self):
         textonmsg.away = True
@@ -185,7 +189,7 @@ class textonmsg(znc.Module):
         """Initially sets variables on module load"""
         # TODO add introduction statements
         if args != '':
-            self.nv['number'] = self.numberCheck(args)
+            self.setNumber(args)
         else:
             self.setNV('number', '')
             self.showNum()
@@ -213,7 +217,6 @@ class textonmsg(znc.Module):
         nick = nick.GetNick()
         try:
             received_num = textonmsg.received[nick]
-            # TODO fix potential int error
             if received_num < int(self.nv['msg_limit']):
                 limit = False
             else:
@@ -256,14 +259,13 @@ class textonmsg(znc.Module):
                 self.listBlocked()
         elif command[0].lower() == 'number':
             if self.checkArg(command):
-                self.nv['number'] = self.numberCheck(command[1])
+                self.setNumber(command[1])
         elif command[0].lower() == 'shownum':
             if self.checkNoArg(command):
                 self.showNum()
         elif command[0].lower() == 'limit':
             if self.checkArg(command):
-                # TODO put this in a function
-                self.nv['msg_limit'] = self.setLimit(command[1])
+                self.setLimit(command[1])
         elif command[0].lower() == 'away':
             if self.checkNoArg(command):
                 self.setAway()
