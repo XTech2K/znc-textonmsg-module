@@ -25,6 +25,32 @@ class textonmsg(znc.Module):
     away = None
     received = None
 
+    def sendText(self, nick, message):
+        """Sends text via Twilio when client is offline and receives message"""
+        blocked = json.loads(self.nv['blocked']).keys()
+        blocked = list(blocked)
+        nick = nick.GetNick()
+        try:
+            received_num = textonmsg.received[nick]
+            if received_num < int(self.nv['msg_limit']):
+                limit = False
+            else:
+                limit = True
+        except KeyError:
+            textonmsg.received[nick] = 0
+            limit = False
+        number = self.nv['number']
+        if not (self.isOnline() or nick in blocked or number == '' or limit):
+            twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
+            message = 'You have received a message from ' \
+                      + nick + ': "' + message.s + '"'
+            twilio.messages.create(
+                body=message,
+                to='+1' + number,
+                from_='+14342605039'
+            )
+            textonmsg.received[nick] += 1
+
     def setTimer(self):
         textonmsg.timer = self.CreateTimer(IdleTimer,
                                            interval=5,
@@ -211,32 +237,15 @@ class textonmsg(znc.Module):
         textonmsg.connected = False
 
     def OnPrivMsg(self, nick, message):
-        """Sends text via Twilio when client is offline and receives message"""
-        blocked = json.loads(self.nv['blocked']).keys()
-        blocked = list(blocked)
-        nick = nick.GetNick()
-        try:
-            received_num = textonmsg.received[nick]
-            if received_num < int(self.nv['msg_limit']):
-                limit = False
-            else:
-                limit = True
-        except KeyError:
-            textonmsg.received[nick] = 0
-            limit = False
-        number = self.nv['number']
-        if not (self.isOnline() or nick in blocked or number == '' or limit):
-            twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
-            message = 'You have received a message from ' \
-                      + nick + ': "' + message.s + '"'
-            twilio.messages.create(
-                body=message,
-                to='+1' + number,
-                from_='+14342605039'
-            )
-            textonmsg.received[nick] += 1
+        self.sendText(nick, message)
+
+    def OnPrivNotice(self, nick, message):
+        self.sendText(nick, message)
 
     def OnUserMsg(self, target, message):
+        self.ping()
+
+    def OnUserNotice(self, target, message):
         self.ping()
 
     def OnNick(self, old_nick, new_nick, chans):
