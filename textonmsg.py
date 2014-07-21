@@ -242,7 +242,8 @@ class textonmsg(znc.Module):
     def OnNick(self, old_nick, new_nick, chans):
         self.ping()
         old_nick = old_nick.GetNick()
-        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
+        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|'
+                           r'('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
         if regex.match(new_nick):
             self.setAway()
 
