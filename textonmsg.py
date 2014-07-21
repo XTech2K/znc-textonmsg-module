@@ -16,7 +16,7 @@ class IdleTimer(znc.Timer):
 
 
 class textonmsg(znc.Module):
-    description = 'Texts you if you receive a private message while offline.'
+    description = 'Texts you if you receive a private message while offline'
 
     timer = None
     connected = None
@@ -58,14 +58,15 @@ class textonmsg(znc.Module):
     # mixedCase method name means that it is a normal method
     def checkArg(self, command):
         if len(command) != 2:
-            self.PutModule('invalid number of arguments given;')
-            self.PutModule('please present command and 1 argument.')
+            self.PutModule('Invalid number of arguments given')
+            self.PutModule('Please present command and 1 argument')
             return False
         return True
 
     def checkNoArg(self, command):
         if len(command) > 1:
-            self.PutModule('"away" does not accept arguments.')
+            self.PutModule('This command does not accept arguments')
+            self.PutModule('Please present command alone')
             return False
         return True
 
