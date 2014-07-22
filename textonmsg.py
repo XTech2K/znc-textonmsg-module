@@ -172,12 +172,14 @@ class textonmsg(znc.Module):
         self.PutModule('You are now away, and will receive texts when PM\'ed')
 
     def setIdleTime(self, idle_time):
+        # TODO add more of a message and make less hacky-looking
         try:
             float(idle_time)
             self.nv['idle_time'] = idle_time
+            if not textonmsg.idle:
+                textonmsg.timer.Stop()
+                textonmsg.idle = True
             self.ping()
-            textonmsg.timer.Stop()
-            self.setTimer()
         except ValueError:
             self.PutModule('Not a valid number')
             self.PutModule('Please try again')
