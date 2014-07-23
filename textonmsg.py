@@ -106,10 +106,8 @@ class textonmsg(znc.Module):
         return True
 
     def numberCheckFail(self):
-        # TODO make message more clear
         self.PutModule('Warning: not a valid number')
         self.PutModule('Please enter a 10-digit phone number')
-        self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
         self.nv['number'] = ''
 
     def setNumber(self, number):
@@ -132,7 +130,7 @@ class textonmsg(znc.Module):
         if number == '':
             self.PutModule('Currently, no number is set')
             self.PutModule('The module will not work until you enter a number')
-            self.PutModule('Type "/msg *textonmsg number <phone #>" to enter')
+
             return
         self.PutModule('Current number: ' + number)
 
@@ -313,5 +311,4 @@ class textonmsg(znc.Module):
             self.help()
         else:
             self.PutModule('Not a valid command')
-            self.PutModule('Type "/msg *textonmsg help" to receive '
-                           'a list of valid commands')
+            self.PutModule('Type "help" to receive a list of valid commands')
