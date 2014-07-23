@@ -72,7 +72,7 @@ class textonmsg(znc.Module):
             textonmsg.timer.last_activity = time()
         if textonmsg.away:
             self.PutModule('Warning: You are still set as away, '
-                           'and will continue to receive messages')
+                           'and will continue to receive texts')
             self.PutModule('To remove this status, type "return" here')
 
     def setIdle(self):
