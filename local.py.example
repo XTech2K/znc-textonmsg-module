@@ -7,9 +7,11 @@ TWILIO_SID = ''
 #Token from Twilio account
 TWILIO_TOKEN = ''
 
-#Intro statement for the module (put "\n" wherever you want a new line
-INTRODUCTION = 'Welcome to the COS Text-On-Message module!\nTo begin with, make sure that you have a number set.\n' \
-               'Then, the module will automatically begin sending you texts ' \
+#Intro statement for the module (put "\n" wherever you want a new line)
+INTRODUCTION = 'Welcome to the COS Text-On-Message module!\n' \
+               'To begin with, make sure that you have a phone number set. ' \
+               '(you can do this by checking the chat with *textonmsg)\n' \
+               'The module will then automatically begin sending you texts ' \
                'when you receive a message while offline or set as away.\n' \
-               'then, type "/msg *textonmsg help" to receive a list of ' \
-               'commands that can be entered into the module\n'
+               'Type "help" in the *textonmsg chat to receive a list of ' \
+               'commands that can be entered into the module.\n\n'

@@ -78,7 +78,8 @@ class textonmsg(znc.Module):
     def setIdle(self):
         textonmsg.timer.Stop()
         textonmsg.idle = True
-        self.PutStatus('you are now idle, and will receive texts when PM\'ed')
+        self.PutModule('you are now idle, '
+                       'and will receive texts when PM\'ed')
 
     def setNV(self, var, default):
         """Initializes NV variables if they do not already exist"""
@@ -176,7 +177,8 @@ class textonmsg(znc.Module):
     def setAway(self):
         if not textonmsg.away:
             textonmsg.away = True
-            self.PutModule('You are now away, and will receive texts when PM\'ed')
+            self.PutModule('You are now away, '
+                           'and will receive texts when PM\'ed')
         else:
             self.PutModule('You are already set to away')
 
@@ -186,11 +188,11 @@ class textonmsg(znc.Module):
             self.PutModule('You are not longer away')
 
     def setIdleTime(self, idle_time):
-        # TODO add more of a message and make less hacky-looking
         self.ping()
         try:
             textonmsg.timer.idle_time = float(idle_time) * 60
             self.nv['idle_time'] = idle_time
+            self.PutModule('New idle time set: ' + idle_time)
         except ValueError:
             self.PutModule('Not a valid number')
             self.PutModule('Please try again')
@@ -306,6 +308,7 @@ class textonmsg(znc.Module):
         elif command[0].lower() == 'ping':
             if self.checkNoArg(command):
                 self.ping()
+                self.PutModule('pinged')
         elif command[0].lower() == 'help':
             self.help()
         else:
