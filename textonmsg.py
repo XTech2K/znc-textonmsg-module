@@ -56,7 +56,7 @@ class textonmsg(znc.Module):
                                            interval=5,
                                            cycles=0,
                                            description='checks for idle client'
-        )
+                                           )
         textonmsg.timer.idle_time = float(self.nv['idle_time']) * 60
         textonmsg.timer.last_activity = time()
 
@@ -173,13 +173,10 @@ class textonmsg(znc.Module):
 
     def setIdleTime(self, idle_time):
         # TODO add more of a message and make less hacky-looking
+        self.ping()
         try:
-            float(idle_time)
+            textonmsg.timer.idle_time = float(idle_time) * 60
             self.nv['idle_time'] = idle_time
-            if not textonmsg.idle:
-                textonmsg.timer.Stop()
-                textonmsg.idle = True
-            self.ping()
         except ValueError:
             self.PutModule('Not a valid number')
             self.PutModule('Please try again')
