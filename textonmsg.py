@@ -30,14 +30,17 @@ class textonmsg(znc.Module):
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
         nick = nick.GetNick()
-        try:
-            received_num = textonmsg.received[nick]
-            if received_num < int(self.nv['msg_limit']):
+        if self.nv['msg_limit'] != '0':
+            try:
+                received_num = textonmsg.received[nick]
+                if received_num < int(self.nv['msg_limit']):
+                    limit = False
+                else:
+                    limit = True
+            except KeyError:
+                textonmsg.received[nick] = 0
                 limit = False
-            else:
-                limit = True
-        except KeyError:
-            textonmsg.received[nick] = 0
+        else:
             limit = False
         number = self.nv['number']
         if not (self.isOnline() or nick in blocked or number == '' or limit):
@@ -62,12 +65,15 @@ class textonmsg(znc.Module):
 
     def ping(self):
         textonmsg.received = {}
-        textonmsg.away = False
         if textonmsg.idle:
             textonmsg.idle = False
             self.setTimer()
         else:
             textonmsg.timer.last_activity = time()
+        if textonmsg.away:
+            self.PutModule('Warning: You are still set as away, '
+                           'and will continue to receive messages')
+            self.PutModule('To remove this status, type "return" here')
 
     def setIdle(self):
         textonmsg.timer.Stop()
@@ -168,8 +174,16 @@ class textonmsg(znc.Module):
         self.nv['msg_limit'] = str(limit)
 
     def setAway(self):
-        textonmsg.away = True
-        self.PutModule('You are now away, and will receive texts when PM\'ed')
+        if not textonmsg.away:
+            textonmsg.away = True
+            self.PutModule('You are now away, and will receive texts when PM\'ed')
+        else:
+            self.PutModule('You are already set to away')
+
+    def unsetAway(self):
+        if textonmsg.away:
+            textonmsg.away = False
+            self.PutModule('You are not longer away')
 
     def setIdleTime(self, idle_time):
         # TODO add more of a message and make less hacky-looking
@@ -200,14 +214,16 @@ class textonmsg(znc.Module):
         self.PutModule('shownum            - '
                        'shows the current connected phone number')
         self.PutModule('limit <new limit>  - '
-                       'sets a new max messages per user to send as texts'
-                       '(current: ' + self.nv['msg_limit'] + ')')
+                       'sets a new max messages per user to send as texts '
+                       '(set to 0 to turn off this functionality) '
+                       '(current: ' + self.nv['msg_limit'] + ' messages)')
         self.PutModule('away               - sets you to away')
+        self.PutModule('return             - removes away status')
         self.PutModule('idle <idle time>   - '
                        'sets the number of minutes before you are set to idle '
-                       '(set to 0 to turn off this functionality)')
-        self.PutModule('ping               - '
-                       'resets idle timer and ends away status')
+                       '(set to 0 to turn off this functionality) '
+                       '(current: ' + self.nv['idle_time'] + ' minutes)')
+        self.PutModule('ping               - resets idle timer')
 
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
@@ -254,6 +270,10 @@ class textonmsg(znc.Module):
                            r'('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
         if regex.match(new_nick):
             self.setAway()
+        regex = re.compile(r'((zz|afk|away).*'+new_nick+r')|'
+                           r'('+new_nick+r'.*(zz|afk|away))', re.IGNORECASE)
+        if regex.match(old_nick):
+            self.unsetAway()
 
     def OnModCommand(self, command):
         command = command.split(' ')
@@ -278,6 +298,9 @@ class textonmsg(znc.Module):
         elif command[0].lower() == 'away':
             if self.checkNoArg(command):
                 self.setAway()
+        elif command[0].lower() == 'return':
+            if self.checkNoArg(command):
+                self.unsetAway()
         elif command[0].lower() == 'idle':
             if self.checkArg(command):
                 self.setIdleTime(command[1])
