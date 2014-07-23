@@ -6,7 +6,7 @@ from twilio.rest import TwilioRestClient
 import json
 import re
 from time import time
-from local import TWILIO_SID, TWILIO_TOKEN
+from local import TWILIO_SID, TWILIO_TOKEN, INTRODUCTION
 
 
 class IdleTimer(znc.Timer):
@@ -89,7 +89,7 @@ class textonmsg(znc.Module):
 
     # mixedCase method name means that it is a normal method
     def checkArg(self, command):
-        """Ensures that command has exatly 1 argument"""
+        """Ensures that command has exactly 1 argument"""
         if len(command) != 2:
             self.PutModule('Invalid number of arguments given')
             self.PutModule('Please present command and 1 argument')
@@ -228,7 +228,7 @@ class textonmsg(znc.Module):
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
         """Initially sets variables on module load"""
-        # TODO add introduction statements
+        self.PutStatus(INTRODUCTION)
         if args != '':
             self.setNumber(args)
         else:
@@ -246,7 +246,6 @@ class textonmsg(znc.Module):
 
     def OnClientLogin(self):
         textonmsg.connected = True
-        self.ping()
 
     def OnClientDisconnect(self):
         textonmsg.connected = False
