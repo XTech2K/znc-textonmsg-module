@@ -1,13 +1,13 @@
-#This file should be filled out, renamed to "local.py" and
-#moved to the modpython folder before the module us used
+# This file should be filled out, renamed to "local.py" and
+# moved to the modpython folder before the module us used
 
-#SID from Twilio account
+# SID from Twilio account
 TWILIO_SID = ''
 
-#Token from Twilio account
+# Token from Twilio account
 TWILIO_TOKEN = ''
 
-#Intro statement for the module (put "\n" wherever you want a new line)
+# Intro statement for the module (put "\n" wherever you want a new line)
 INTRODUCTION = '\n\nWelcome to the Text-On-Message module!\n\n' \
                'To begin with, make sure that you have a phone number set. ' \
                '(you can do this by checking the chat with *textonmsg)\n' \
