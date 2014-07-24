@@ -69,13 +69,14 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         textonmsg.received = {}
         if textonmsg.idle:
             textonmsg.idle = False
+            self.PutModule('You are no longer idle')
             self.set_timer()
         else:
             textonmsg.timer.last_activity = time()
         if textonmsg.away:
             self.PutModule('Warning: You are still set as away, '
                            'and will continue to receive texts')
-            self.PutModule('To remove this status, type "return" here')
+            self.PutModule('To remove this status, type "return"')
 
     def set_idle(self):
         textonmsg.timer.Stop()
@@ -225,7 +226,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
                        'sets the number of minutes before you are set to idle '
                        '(set to 0 to turn off this functionality) '
                        '(current: ' + self.nv['idle_time'] + ' minutes)')
-        self.PutModule('ping               - resets idle timer')
+        self.PutModule('ping               - manually resets idle timer')
 
     # CamelCase method name means that it is a built-in ZNC event handler
     def OnLoad(self, args, message):
@@ -259,11 +260,35 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
     def OnPrivNotice(self, nick, message):
         self.send_text(nick, message)
 
+    def OnPrivCTCP(self, nick, message):
+        self.send_text(nick, message)
+
     # Following methods: reset idle timer upon common user actions
-    def OnUserMsg(self, target, message):
+    def OnUserCTCPReply(self, sTarget, sMessage):
         self.ping()
 
-    def OnUserNotice(self, target, message):
+    def OnUserCTCP(self, sTarget, sMessage):
+        self.ping()
+
+    def OnUserAction(self, sTarget, sMessage):
+        self.ping()
+    
+    def OnUserMsg(self, sTarget, sMessage):
+        self.ping()
+    
+    def OnUserNotice(self, sTarget, sMessage):
+        self.ping()
+    
+    def OnUserJoin(self, sChannel, sKey):
+        self.ping()
+    
+    def OnUserPart(self, sChannel, sMessage):
+        self.ping()
+    
+    def OnUserTopic(self, sChannel, sTopic):
+        self.ping()
+    
+    def OnUserTopicRequest(self, sChannel):
         self.ping()
 
     def OnNick(self, old_nick, new_nick, chans):
