@@ -8,10 +8,10 @@ TWILIO_SID = ''
 TWILIO_TOKEN = ''
 
 #Intro statement for the module (put "\n" wherever you want a new line)
-INTRODUCTION = 'Welcome to the COS Text-On-Message module!\n' \
+INTRODUCTION = '\n\nWelcome to the Text-On-Message module!\n\n' \
                'To begin with, make sure that you have a phone number set. ' \
                '(you can do this by checking the chat with *textonmsg)\n' \
                'The module will then automatically begin sending you texts ' \
-               'when you receive a message while offline or set as away.\n' \
+               'when you receive a message while offline, idle, or away.\n' \
                'Type "help" in the *textonmsg chat to receive a list of ' \
-               'commands that can be entered into the module.\n\n'
+               'commands that can be entered into the module.\n\n\n'
