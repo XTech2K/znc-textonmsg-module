@@ -6,7 +6,7 @@ from twilio.rest import TwilioRestClient
 import json
 import re
 from time import time
-from local import TWILIO_SID, TWILIO_TOKEN, INTRODUCTION
+from local import TWILIO_SID, TWILIO_TOKEN, TWILIO_NUMBER, INTRODUCTION
 
 
 class IdleTimer(znc.Timer):
@@ -226,7 +226,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             twilio.messages.create(
                 body=message,
                 to='+1' + number,
-                from_='+14342605039'
+                from_=TWILIO_NUMBER
             )
             textonmsg.received[nick] += 1
 

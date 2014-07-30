@@ -7,6 +7,9 @@ TWILIO_SID = ''
 # Token from Twilio account
 TWILIO_TOKEN = ''
 
+# Number from Twilio account (make sure it is in the correct format)
+TWILIO_NUMBER = '+11234567890'  # for number (123)-456-7890
+
 # Intro statement for the module (put "\n" wherever you want a new line)
 INTRODUCTION = '\n\nWelcome to the Text-On-Message module!\n\n' \
                'To begin with, make sure that you have a phone number set. ' \
