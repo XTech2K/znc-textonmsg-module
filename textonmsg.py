@@ -76,7 +76,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         if textonmsg.away:
             self.PutModule('Warning: You are still set as away, '
                            'and will continue to receive texts')
-            self.PutModule('To remove this status, type "return"')
+            self.PutModule('To remove this status, use the "return" command')
 
     def set_idle(self):
         textonmsg.timer.Stop()
@@ -342,4 +342,5 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             self.help()
         else:
             self.PutModule('Not a valid command')
-            self.PutModule('Type "help" to receive a list of valid commands')
+            self.PutModule('Use the "help" command to receive a list of'
+                           ' valid commands')
