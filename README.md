@@ -11,7 +11,7 @@ This ZNC module uses the Twilio API to allow users to have themselves be texted 
 2. Install all normal znc requirements, as well as python3 and swig
      * If you are using a linux system, you will also have to install python3-pip
 
-3. If you are going to use a virtualenv, make sure that you ahve created and entered it before you move on
+3. If you are going to use a virtualenv, make sure that you have created and entered it before you move on
 
 4. Use the command `pip3 install twilio` to get twilio so that you can send texts
 
@@ -27,7 +27,7 @@ This ZNC module uses the Twilio API to allow users to have themselves be texted 
 
 10. Log in to your ZNC server as an admin and load the global "modpython" module
 
-And your done! Your users can now load the textonmsg module just like any other network module, and use it as they please.
+And you're done! Your users can now load the textonmsg module just like any other network module, and use it as they please.
 
 ------
 
