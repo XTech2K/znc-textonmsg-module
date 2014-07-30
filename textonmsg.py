@@ -44,7 +44,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         else:
             limit = False
         number = self.nv['number']
-        if not (self.is_available() or nick in blocked or number == '' or limit):
+        if not (self.available() or nick in blocked or number == '' or limit):
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from ' \
                       + nick + ': "' + message.s + '"'
@@ -206,9 +206,9 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             self.PutModule('Not a valid number')
             self.PutModule('Please try again')
 
-    def is_available(self):
+    def available(self):
         """Tests all online variables to see whether or not to send text"""
-        if self.nv('toggle') == 'off':
+        if self.nv['toggle'] == 'off':
             act_online = True
         else:
             act_online = textonmsg.connected
