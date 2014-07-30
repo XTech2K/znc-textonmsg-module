@@ -205,6 +205,8 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         """Sends text via Twilio when client is offline and receives message"""
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
+        for x in range(len(blocked)):
+            blocked[x] = blocked[x].lower()
         nick = nick.GetNick()
         if self.nv['msg_limit'] != '0':
             try:
@@ -219,7 +221,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         else:
             limit = False
         number = self.nv['number']
-        if not (self.available() or nick in blocked or number == '' or limit):
+        if not (self.available() or nick.lower() in blocked or number == '' or limit):
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from ' \
                       + nick + ': "' + message.s + '"'
