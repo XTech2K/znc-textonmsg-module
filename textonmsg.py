@@ -44,7 +44,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         else:
             limit = False
         number = self.nv['number']
-        if not (self.is_online() or nick in blocked or number == '' or limit):
+        if not (self.is_available() or nick in blocked or number == '' or limit):
             twilio = TwilioRestClient(TWILIO_SID, TWILIO_TOKEN)
             message = 'You have received a message from ' \
                       + nick + ': "' + message.s + '"'
@@ -106,6 +106,15 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             self.PutModule('Please present command alone')
             return False
         return True
+
+    def toggle(self):
+        if self.nv['toggle'] == 'on':
+            self.nv['toggle'] = 'off'
+            self.PutModule('You will now stop receiving texts when offline')
+        else:
+            self.nv['toggle'] = 'on'
+            self.PutModule('you will now receive texts when offline')
+        return
 
     def set_number_fail(self):
         self.PutModule('Warning: not a valid number')
@@ -197,15 +206,21 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             self.PutModule('Not a valid number')
             self.PutModule('Please try again')
 
-    def is_online(self):
+    def is_available(self):
         """Tests all online variables to see whether or not to send text"""
-        if textonmsg.connected and not textonmsg.away and not textonmsg.idle:
+        if self.nv('toggle') == 'off':
+            act_online = True
+        else:
+            act_online = textonmsg.connected
+        if act_online and not textonmsg.away and not textonmsg.idle:
             return True
         return False
 
     def help(self):
         """Lists all commands"""
         self.PutModule('Available commands are:')
+        self.PutModule('toggle             - '
+                       'toggles texts on messages while disconnected')
         self.PutModule('block <username>   - '
                        'stops getting texts when messaged by specified user')
         self.PutModule('unblock <username> - '
@@ -237,6 +252,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         else:
             self.set_nv('number', '')
             self.show_num()
+        self.set_nv('toggle', 'on')
         self.set_nv('blocked', '{}')
         self.set_nv('idle_time', '0')
         self.set_nv('msg_limit', '3')
@@ -245,10 +261,18 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         textonmsg.connected = True
         textonmsg.idle = False
         textonmsg.away = False
+        if self.nv['toggle'] == 'off':
+            self.PutModule('Warning: You are not currently receiving texts'
+                           'when offline.')
+            self.PutModule('To receive texts again, use the "toggle" command')
         return True
 
     def OnClientLogin(self):
         textonmsg.connected = True
+        if self.nv['toggle'] == 'off':
+            self.PutModule('Warning: You are not currently receiving texts'
+                           'when offline.')
+            self.PutModule('To receive texts again, use the "toggle" command')
 
     def OnClientDisconnect(self):
         textonmsg.connected = False
@@ -307,7 +331,10 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
     def OnModCommand(self, command):
         """Converts commands to function calls"""
         command = command.split(' ')
-        if command[0].lower() == 'block':
+        if command[0].lower() == 'toggle':
+            if self.check_no_arg(command):
+                self.toggle()
+        elif command[0].lower() == 'block':
             if self.check_arg(command):
                 self.block(command[1])
         elif command[0].lower() == 'unblock':
