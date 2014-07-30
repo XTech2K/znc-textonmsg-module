@@ -25,7 +25,182 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
     away = None
     received = None
 
+    # CamelCase method name means that it is a built-in ZNC event handler
+    def OnLoad(self, args, message):
+        """Initially sets variables on module load"""
+        self.PutStatus(INTRODUCTION)
+        if args != '':
+            self.set_number(args)
+        else:
+            self.set_nv('number', '')
+            self.show_num()
+        self.set_nv('toggle', 'on')
+        self.set_nv('blocked', '{}')
+        self.set_nv('idle_time', '0')
+        self.set_nv('msg_limit', '3')
+        self.set_timer()
+        textonmsg.received = {}
+        textonmsg.connected = True
+        textonmsg.idle = False
+        textonmsg.away = False
+        if self.nv['toggle'] == 'off':
+            self.PutModule('Warning: You are not currently receiving texts'
+                           'when offline.')
+            self.PutModule('To receive texts again, use the "toggle" command')
+        return True
+
+    def OnClientLogin(self):
+        textonmsg.connected = True
+        if self.nv['toggle'] == 'off':
+            self.PutModule('Warning: You are not currently receiving texts'
+                           'when offline.')
+            self.PutModule('To receive texts again, use the "toggle" command')
+
+    def OnClientDisconnect(self):
+        textonmsg.connected = False
+
+    # Following methods: send text upon common received message types
+    def OnPrivMsg(self, nick, message):
+        self.send_text(nick, message)
+
+    def OnPrivNotice(self, nick, message):
+        self.send_text(nick, message)
+
+    def OnPrivCTCP(self, nick, message):
+        self.send_text(nick, message)
+
+    # Following methods: reset idle timer upon common user actions
+    def OnUserCTCPReply(self, sTarget, sMessage):
+        self.ping()
+
+    def OnUserCTCP(self, sTarget, sMessage):
+        self.ping()
+
+    def OnUserAction(self, sTarget, sMessage):
+        self.ping()
+
+    def OnUserMsg(self, sTarget, sMessage):
+        self.ping()
+
+    def OnUserNotice(self, sTarget, sMessage):
+        self.ping()
+
+    def OnUserJoin(self, sChannel, sKey):
+        self.ping()
+
+    def OnUserPart(self, sChannel, sMessage):
+        self.ping()
+
+    def OnUserTopic(self, sChannel, sTopic):
+        self.ping()
+
+    def OnUserTopicRequest(self, sChannel):
+        self.ping()
+
+    def OnNick(self, old_nick, new_nick, chans):
+        """Sets or unsets away status upon certain nick changes"""
+        self.ping()
+        old_nick = old_nick.GetNick()
+        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|'
+                           r'('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
+        if regex.match(new_nick):
+            self.set_away()
+        regex = re.compile(r'((zz|afk|away).*'+new_nick+r')|'
+                           r'('+new_nick+r'.*(zz|afk|away))', re.IGNORECASE)
+        if regex.match(old_nick):
+            self.unset_away()
+
+    def OnModCommand(self, command):
+        """Converts commands to function calls"""
+        command = command.split(' ')
+        if command[0].lower() == 'ping':
+            if self.check_no_arg(command):
+                self.ping()
+                self.PutModule('pinged')
+        elif command[0].lower() == 'number':
+            if self.check_arg(command):
+                self.set_number(command[1])
+        elif command[0].lower() == 'shownum':
+            if self.check_no_arg(command):
+                self.show_num()
+        elif command[0].lower() == 'block':
+            if self.check_arg(command):
+                self.block(command[1])
+        elif command[0].lower() == 'unblock':
+            if self.check_arg(command):
+                self.unblock(command[1])
+        elif command[0].lower() == 'listblocked':
+            if self.check_no_arg(command):
+                self.list_blocked()
+        elif command[0].lower() == 'limit':
+            if self.check_arg(command):
+                self.set_limit(command[1])
+        elif command[0].lower() == 'toggle':
+            if self.check_no_arg(command):
+                self.toggle()
+        elif command[0].lower() == 'away':
+            if self.check_no_arg(command):
+                self.set_away()
+        elif command[0].lower() == 'return':
+            if self.check_no_arg(command):
+                self.unset_away()
+        elif command[0].lower() == 'idle':
+            if self.check_arg(command):
+                self.set_idle_time(command[1])
+        elif command[0].lower() == 'help':
+            self.help()
+        else:
+            self.PutModule('Not a valid command')
+            self.PutModule('Use the "help" command to receive a list of'
+                           ' valid commands')
+
     # snake_case method name means that it is a normal method
+    def set_nv(self, var, default):
+        """Initializes NV variables if they do not already exist"""
+        try:
+            self.nv[var]
+        except:
+            self.nv[var] = default
+
+    def set_timer(self):
+        textonmsg.timer = self.CreateTimer(IdleTimer,
+                                           interval=5,
+                                           cycles=0,
+                                           description='checks for idle client'
+                                           )
+        textonmsg.timer.idle_time = float(self.nv['idle_time']) * 60
+        textonmsg.timer.last_activity = time()
+
+    def set_idle(self):
+        textonmsg.timer.Stop()
+        textonmsg.idle = True
+        self.PutModule('you are now idle, '
+                       'and will receive texts when PM\'ed')
+
+    def ping(self):
+        """resets idle timer and message limit"""
+        textonmsg.received = {}
+        if textonmsg.idle:
+            textonmsg.idle = False
+            self.PutModule('You are no longer idle')
+            self.set_timer()
+        else:
+            textonmsg.timer.last_activity = time()
+        if textonmsg.away:
+            self.PutModule('Warning: You are still set as away, '
+                           'and will continue to receive texts')
+            self.PutModule('To remove this status, use the "return" command')
+
+    def available(self):
+        """Tests all online variables to see whether or not to send text"""
+        if self.nv['toggle'] == 'off':
+            act_online = True
+        else:
+            act_online = textonmsg.connected
+        if act_online and not textonmsg.away and not textonmsg.idle:
+            return True
+        return False
+
     def send_text(self, nick, message):
         """Sends text via Twilio when client is offline and receives message"""
         blocked = json.loads(self.nv['blocked']).keys()
@@ -55,42 +230,6 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             )
             textonmsg.received[nick] += 1
 
-    def set_timer(self):
-        textonmsg.timer = self.CreateTimer(IdleTimer,
-                                           interval=5,
-                                           cycles=0,
-                                           description='checks for idle client'
-                                           )
-        textonmsg.timer.idle_time = float(self.nv['idle_time']) * 60
-        textonmsg.timer.last_activity = time()
-
-    def ping(self):
-        """resets idle timer and message limit"""
-        textonmsg.received = {}
-        if textonmsg.idle:
-            textonmsg.idle = False
-            self.PutModule('You are no longer idle')
-            self.set_timer()
-        else:
-            textonmsg.timer.last_activity = time()
-        if textonmsg.away:
-            self.PutModule('Warning: You are still set as away, '
-                           'and will continue to receive texts')
-            self.PutModule('To remove this status, use the "return" command')
-
-    def set_idle(self):
-        textonmsg.timer.Stop()
-        textonmsg.idle = True
-        self.PutModule('you are now idle, '
-                       'and will receive texts when PM\'ed')
-
-    def set_nv(self, var, default):
-        """Initializes NV variables if they do not already exist"""
-        try:
-            self.nv[var]
-        except:
-            self.nv[var] = default
-
     def check_arg(self, command):
         """Ensures that command has exactly 1 argument"""
         if len(command) != 2:
@@ -106,15 +245,6 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             self.PutModule('Please present command alone')
             return False
         return True
-
-    def toggle(self):
-        if self.nv['toggle'] == 'on':
-            self.nv['toggle'] = 'off'
-            self.PutModule('You will now stop receiving texts when offline')
-        else:
-            self.nv['toggle'] = 'on'
-            self.PutModule('you will now receive texts when offline')
-        return
 
     def set_number_fail(self):
         self.PutModule('Warning: not a valid number')
@@ -183,6 +313,15 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
         self.PutModule('Message limit set to ' + str(limit))
         self.nv['msg_limit'] = str(limit)
 
+    def toggle(self):
+        if self.nv['toggle'] == 'on':
+            self.nv['toggle'] = 'off'
+            self.PutModule('You will now stop receiving texts when offline')
+        else:
+            self.nv['toggle'] = 'on'
+            self.PutModule('you will now receive texts when offline')
+        return
+
     def set_away(self):
         if not textonmsg.away:
             textonmsg.away = True
@@ -206,168 +345,30 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             self.PutModule('Not a valid number')
             self.PutModule('Please try again')
 
-    def available(self):
-        """Tests all online variables to see whether or not to send text"""
-        if self.nv['toggle'] == 'off':
-            act_online = True
-        else:
-            act_online = textonmsg.connected
-        if act_online and not textonmsg.away and not textonmsg.idle:
-            return True
-        return False
-
     def help(self):
         """Lists all commands"""
         self.PutModule('Available commands are:')
-        self.PutModule('toggle             - '
-                       'toggles texts on messages while disconnected')
+        self.PutModule('ping               - '
+                       'manually resets idle timer and message limit')
+        self.PutModule('number <phone #>   - '
+                       'sets 10-digit phone number to receive texts')
+        self.PutModule('shownum            - '
+                       'shows the current connected phone number')
         self.PutModule('block <username>   - '
                        'stops getting texts when messaged by specified user')
         self.PutModule('unblock <username> - '
                        'removes block from specified user')
         self.PutModule('listblocked        - '
                        'returns a list of blocked users')
-        self.PutModule('number <phone #>   - '
-                       'sets 10-digit phone number to receive texts')
-        self.PutModule('shownum            - '
-                       'shows the current connected phone number')
         self.PutModule('limit <new limit>  - '
                        'sets a new max messages per user to send as texts '
                        '(set to 0 to turn off this functionality) '
                        '(current: ' + self.nv['msg_limit'] + ' messages)')
+        self.PutModule('toggle             - '
+                       'toggles texts on messages while disconnected')
         self.PutModule('away               - sets you to away')
         self.PutModule('return             - removes away status')
         self.PutModule('idle <idle time>   - '
                        'sets the number of minutes before you are set to idle '
                        '(set to 0 to turn off this functionality) '
                        '(current: ' + self.nv['idle_time'] + ' minutes)')
-        self.PutModule('ping               - manually resets idle timer')
-
-    # CamelCase method name means that it is a built-in ZNC event handler
-    def OnLoad(self, args, message):
-        """Initially sets variables on module load"""
-        self.PutStatus(INTRODUCTION)
-        if args != '':
-            self.set_number(args)
-        else:
-            self.set_nv('number', '')
-            self.show_num()
-        self.set_nv('toggle', 'on')
-        self.set_nv('blocked', '{}')
-        self.set_nv('idle_time', '0')
-        self.set_nv('msg_limit', '3')
-        self.set_timer()
-        textonmsg.received = {}
-        textonmsg.connected = True
-        textonmsg.idle = False
-        textonmsg.away = False
-        if self.nv['toggle'] == 'off':
-            self.PutModule('Warning: You are not currently receiving texts'
-                           'when offline.')
-            self.PutModule('To receive texts again, use the "toggle" command')
-        return True
-
-    def OnClientLogin(self):
-        textonmsg.connected = True
-        if self.nv['toggle'] == 'off':
-            self.PutModule('Warning: You are not currently receiving texts'
-                           'when offline.')
-            self.PutModule('To receive texts again, use the "toggle" command')
-
-    def OnClientDisconnect(self):
-        textonmsg.connected = False
-
-    # Following methods: send text upon common received message types
-    def OnPrivMsg(self, nick, message):
-        self.send_text(nick, message)
-
-    def OnPrivNotice(self, nick, message):
-        self.send_text(nick, message)
-
-    def OnPrivCTCP(self, nick, message):
-        self.send_text(nick, message)
-
-    # Following methods: reset idle timer upon common user actions
-    def OnUserCTCPReply(self, sTarget, sMessage):
-        self.ping()
-
-    def OnUserCTCP(self, sTarget, sMessage):
-        self.ping()
-
-    def OnUserAction(self, sTarget, sMessage):
-        self.ping()
-    
-    def OnUserMsg(self, sTarget, sMessage):
-        self.ping()
-    
-    def OnUserNotice(self, sTarget, sMessage):
-        self.ping()
-    
-    def OnUserJoin(self, sChannel, sKey):
-        self.ping()
-    
-    def OnUserPart(self, sChannel, sMessage):
-        self.ping()
-    
-    def OnUserTopic(self, sChannel, sTopic):
-        self.ping()
-    
-    def OnUserTopicRequest(self, sChannel):
-        self.ping()
-
-    def OnNick(self, old_nick, new_nick, chans):
-        """Sets or unsets away status upon certain nick changes"""
-        self.ping()
-        old_nick = old_nick.GetNick()
-        regex = re.compile(r'((zz|afk|away).*'+old_nick+r')|'
-                           r'('+old_nick+r'.*(zz|afk|away))', re.IGNORECASE)
-        if regex.match(new_nick):
-            self.set_away()
-        regex = re.compile(r'((zz|afk|away).*'+new_nick+r')|'
-                           r'('+new_nick+r'.*(zz|afk|away))', re.IGNORECASE)
-        if regex.match(old_nick):
-            self.unset_away()
-
-    def OnModCommand(self, command):
-        """Converts commands to function calls"""
-        command = command.split(' ')
-        if command[0].lower() == 'toggle':
-            if self.check_no_arg(command):
-                self.toggle()
-        elif command[0].lower() == 'block':
-            if self.check_arg(command):
-                self.block(command[1])
-        elif command[0].lower() == 'unblock':
-            if self.check_arg(command):
-                self.unblock(command[1])
-        elif command[0].lower() == 'listblocked':
-            if self.check_no_arg(command):
-                self.list_blocked()
-        elif command[0].lower() == 'number':
-            if self.check_arg(command):
-                self.set_number(command[1])
-        elif command[0].lower() == 'shownum':
-            if self.check_no_arg(command):
-                self.show_num()
-        elif command[0].lower() == 'limit':
-            if self.check_arg(command):
-                self.set_limit(command[1])
-        elif command[0].lower() == 'away':
-            if self.check_no_arg(command):
-                self.set_away()
-        elif command[0].lower() == 'return':
-            if self.check_no_arg(command):
-                self.unset_away()
-        elif command[0].lower() == 'idle':
-            if self.check_arg(command):
-                self.set_idle_time(command[1])
-        elif command[0].lower() == 'ping':
-            if self.check_no_arg(command):
-                self.ping()
-                self.PutModule('pinged')
-        elif command[0].lower() == 'help':
-            self.help()
-        else:
-            self.PutModule('Not a valid command')
-            self.PutModule('Use the "help" command to receive a list of'
-                           ' valid commands')
