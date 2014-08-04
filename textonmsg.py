@@ -209,8 +209,6 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
             return
         blocked = json.loads(self.nv['blocked']).keys()
         blocked = list(blocked)
-        for x in range(len(blocked)):
-            blocked[x] = blocked[x].lower()
         nick = nick.GetNick()
         if self.nv['msg_limit'] != '0':
             try:
@@ -281,6 +279,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
 
     def block(self, username):
         """Blocks specified username"""
+        username = username.lower()  # For case-insensitivity
         blocked = json.loads(self.nv['blocked'])
         if username in blocked.keys():
             self.PutModule(username + ' is already blocked')
@@ -291,6 +290,7 @@ class textonmsg(znc.Module):  # Note: name must be lowercase; ignore convention
 
     def unblock(self, username):
         """Removes block from specified user"""
+        username = username.lower()  # For case-insensitivity
         blocked = json.loads(self.nv['blocked'])
         if not username in blocked.keys():
             self.PutModule(username + ' was not blocked to begin with.')
